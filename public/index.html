@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handouts SMS Sender</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getFirestore, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCcsepgRnebserYHAfZABfPeaK1sUtq5mk",
+            authDomain: "handouts-a19d6.firebaseapp.com",
+            projectId: "handouts-a19d6",
+            storageBucket: "handouts-a19d6.firebasestorage.app",
+            messagingSenderId: "75496989107",
+            appId: "1:75496989107:web:5ec982c3564c6e952c2bc6",
+            measurementId: "G-QCDCN53PDL"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Function to load handouts from Firestore
+        window.loadHandouts = async function() {
+            try {
+                console.log('Starting to load handouts...');
+                const select = document.getElementById('pdfSelect');
+                
+                // Clear existing options except the first one
+                while (select.children.length > 1) {
+                    select.removeChild(select.lastChild);
+                }
+
+                // Get handouts from Firestore
+                const handoutsSnapshot = await getDocs(collection(db, 'handouts'));
+                
+                // Group handouts by category
+                const handoutsByCategory = {};
+                
+                handoutsSnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if (!handoutsByCategory[data.category]) {
+                        handoutsByCategory[data.category] = [];
+                    }
+                    handoutsByCategory[data.category].push({
+                        id: doc.id,
+                        ...data
+                    });
+                });
+
+                // Create dropdown groups by category
+                for (const [category, handouts] of Object.entries(handoutsByCategory)) {
+                    const optgroup = document.createElement('optgroup');
+                    optgroup.label = category;
+                    
+                    // Sort handouts by title within each category
+                    handouts.sort((a, b) => a.title.localeCompare(b.title));
+                    
+                    for (const handout of handouts) {
+                        const option = document.createElement('option');
+                        option.value = JSON.stringify({
+                            fileURL: handout.fileURL,
+                            title: handout.title,
+                            category: handout.category
+                        });
+                        option.textContent = `${handout.title}${handout.source ? ` (${handout.source})` : ''}`;
+                        optgroup.appendChild(option);
+                    }
+                    
+                    select.appendChild(optgroup);
+                }
+                
+                if (select.children.length <= 1) {
+                    showStatus('No handouts found', 'error');
+                }
+            } catch (error) {
+                console.error('Error details:', error);
+                showStatus('Error loading handouts: ' + error.message, 'error');
+            }
+        };
+
+        // Load handouts when page loads
+        document.addEventListener('DOMContentLoaded', window.loadHandouts);
+    </script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded-lg shadow-md w-96">
+        <h1 class="text-2xl font-bold mb-6 text-gray-800">Send Handout via SMS</h1>
+        
+        <form id="smsForm" class="space-y-4">
+            <div>
+                <label for="pdfSelect" class="block text-sm font-medium text-gray-700">Select Handout</label>
+                <select id="pdfSelect" name="pdfSelect" required
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option value="">Choose a handout...</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="to" class="block text-sm font-medium text-gray-700">To Number</label>
+                <input type="tel" id="to" name="to" 
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="+1234567890" required>
+            </div>
+            
+            <div>
+                <label for="message" class="block text-sm font-medium text-gray-700">Additional Message (Optional)</label>
+                <textarea id="message" name="message" rows="2" 
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="Add a custom message..."></textarea>
+            </div>
+            
+            <button type="submit" 
+                class="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                Send Handout Link
+            </button>
+        </form>
+        
+        <div id="status" class="mt-4 text-center hidden">
+            <p id="statusMessage" class="text-sm"></p>
+        </div>
+    </div>
+
+    <script>
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            const statusMessage = document.getElementById('statusMessage');
+            statusDiv.classList.remove('hidden');
+            statusMessage.textContent = message;
+            statusMessage.className = `text-sm ${type === 'error' ? 'text-red-500' : type === 'success' ? 'text-green-500' : 'text-blue-500'}`;
+        }
+
+        document.getElementById('smsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const handoutValue = document.getElementById('pdfSelect').value;
+            if (!handoutValue) {
+                showStatus('Please select a handout', 'error');
+                return;
+            }
+
+            const handoutData = JSON.parse(handoutValue);
+            const to = document.getElementById('to').value;
+            const customMessage = document.getElementById('message').value;
+
+            showStatus('Sending message...', 'info');
+            
+            try {
+                const response = await fetch('/api/send-sms', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        to,
+                        message: `${customMessage ? customMessage + '\n\n' : ''}${handoutData.title} - Access your handout here: ${handoutData.fileURL}`
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showStatus('Handout link sent successfully!', 'success');
+                    document.getElementById('smsForm').reset();
+                } else {
+                    throw new Error(data.error || 'Failed to send message');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus(error.message, 'error');
+            }
+        });
+    </script>
+</body>
+</html>
