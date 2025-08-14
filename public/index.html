@@ -13,22 +13,25 @@
         getDocs,
       } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-      const firebaseConfig = {
-        apiKey: "AIzaSyCcsepgRnebserYHAfZABfPeaK1sUtq5mk",
-        authDomain: "handouts-a19d6.firebaseapp.com",
-        projectId: "handouts-a19d6",
-        storageBucket: "handouts-a19d6.firebasestorage.app",
-        messagingSenderId: "75496989107",
-        appId: "1:75496989107:web:5ec982c3564c6e952c2bc6",
-        measurementId: "G-QCDCN53PDL",
-      };
+      // Initialize Firebase with config from server
+      let app, db;
 
-      // Initialize Firebase
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
+      async function initializeFirebase() {
+        try {
+          const response = await fetch("/api/firebase-config");
+          const firebaseConfig = await response.json();
+          app = initializeApp(firebaseConfig);
+          db = getFirestore(app);
+        } catch (error) {
+          console.error("Failed to initialize Firebase:", error);
+        }
+      }
 
       // Function to load handouts from Firestore
       window.loadHandouts = async function () {
+        if (!db) {
+          await initializeFirebase();
+        }
         try {
           console.log("Starting to load handouts...");
           const select = document.getElementById("pdfSelect");
