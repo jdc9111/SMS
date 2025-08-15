@@ -131,6 +131,7 @@
             fileURL: handout.fileURL,
             title: handout.title,
             category: handout.category,
+            notes: handout.notes || "",
           });
           option.textContent = `${handout.title}${
             handout.source ? ` (${handout.source})` : ""
@@ -272,8 +273,12 @@
                 to,
                 message: `${customMessage ? customMessage + "\n\n" : ""}${
                   handoutData.title
-                } - Access your handout here: ${
+                }${
                   handoutData.fileURL
+                    ? ` - Access your handout here: ${handoutData.fileURL}`
+                    : ""
+                }${
+                  handoutData.notes ? `\n\n${handoutData.notes}` : ""
                 }\n\nThis is not a monitored account. Do not reply to this number.`,
               }),
             });
