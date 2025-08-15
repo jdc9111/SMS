@@ -11,7 +11,9 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // Endpoint to serve Firebase config
 app.get("/api/firebase-config", (req, res) => {
-  res.json({
+  console.log("Firebase config requested");
+
+  const config = {
     apiKey: process.env.FIREBASE_API_KEY,
     authDomain: process.env.FIREBASE_AUTH_DOMAIN,
     projectId: process.env.FIREBASE_PROJECT_ID,
@@ -19,7 +21,14 @@ app.get("/api/firebase-config", (req, res) => {
     messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
     appId: process.env.FIREBASE_APP_ID,
     measurementId: process.env.FIREBASE_MEASUREMENT_ID,
+  };
+
+  console.log("Sending Firebase config:", {
+    ...config,
+    apiKey: config.apiKey ? `${config.apiKey.substring(0, 10)}...` : "MISSING",
   });
+
+  res.json(config);
 });
 
 // Debug middleware to log requests

@@ -18,19 +18,40 @@
 
       async function initializeFirebase() {
         try {
+          console.log("Fetching Firebase config...");
           const response = await fetch("/api/firebase-config");
+
+          if (!response.ok) {
+            throw new Error(`Failed to fetch config: ${response.status}`);
+          }
+
           const firebaseConfig = await response.json();
+          console.log("Firebase config received:", firebaseConfig);
+
           app = initializeApp(firebaseConfig);
           db = getFirestore(app);
+          console.log("Firebase initialized successfully");
+
+          return true;
         } catch (error) {
           console.error("Failed to initialize Firebase:", error);
+          return false;
         }
       }
 
       // Function to load handouts from Firestore
       window.loadHandouts = async function () {
         if (!db) {
-          await initializeFirebase();
+          const initialized = await initializeFirebase();
+          if (!initialized) {
+            showStatus("Failed to connect to database", "error");
+            return;
+          }
+        }
+
+        if (!db) {
+          showStatus("Database not available", "error");
+          return;
         }
         try {
           console.log("Starting to load handouts...");
