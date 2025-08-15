@@ -39,7 +39,10 @@
         }
       }
 
-      // Function to load handouts from Firestore
+      // Global variable to store handouts data
+      let allHandouts = {};
+
+      // Function to load categories from Firestore
       window.loadHandouts = async function () {
         if (!db) {
           const initialized = await initializeFirebase();
@@ -55,58 +58,40 @@
         }
         try {
           console.log("Starting to load handouts...");
-          const select = document.getElementById("pdfSelect");
+          const categorySelect = document.getElementById("categorySelect");
 
           // Clear existing options except the first one
-          while (select.children.length > 1) {
-            select.removeChild(select.lastChild);
+          while (categorySelect.children.length > 1) {
+            categorySelect.removeChild(categorySelect.lastChild);
           }
 
           // Get handouts from Firestore
           const handoutsSnapshot = await getDocs(collection(db, "handouts"));
 
           // Group handouts by category
-          const handoutsByCategory = {};
+          allHandouts = {};
 
           handoutsSnapshot.forEach((doc) => {
             const data = doc.data();
-            if (!handoutsByCategory[data.category]) {
-              handoutsByCategory[data.category] = [];
+            if (!allHandouts[data.category]) {
+              allHandouts[data.category] = [];
             }
-            handoutsByCategory[data.category].push({
+            allHandouts[data.category].push({
               id: doc.id,
               ...data,
             });
           });
 
-          // Create dropdown groups by category
-          for (const [category, handouts] of Object.entries(
-            handoutsByCategory
-          )) {
-            const optgroup = document.createElement("optgroup");
-            optgroup.label = category;
-
-            // Sort handouts by title within each category
-            handouts.sort((a, b) => a.title.localeCompare(b.title));
-
-            for (const handout of handouts) {
-              const option = document.createElement("option");
-              option.value = JSON.stringify({
-                fileURL: handout.fileURL,
-                title: handout.title,
-                category: handout.category,
-              });
-              option.textContent = `${handout.title}${
-                handout.source ? ` (${handout.source})` : ""
-              }`;
-              optgroup.appendChild(option);
-            }
-
-            select.appendChild(optgroup);
+          // Populate category dropdown
+          for (const category of Object.keys(allHandouts).sort()) {
+            const option = document.createElement("option");
+            option.value = category;
+            option.textContent = category;
+            categorySelect.appendChild(option);
           }
 
-          if (select.children.length <= 1) {
-            showStatus("No handouts found", "error");
+          if (categorySelect.children.length <= 1) {
+            showStatus("No categories found", "error");
           }
         } catch (error) {
           console.error("Error details:", error);
@@ -114,8 +99,57 @@
         }
       };
 
+      // Function to load handouts for selected category
+      function loadHandoutsForCategory(category) {
+        const pdfSelect = document.getElementById("pdfSelect");
+
+        // Clear existing options except the first one
+        while (pdfSelect.children.length > 1) {
+          pdfSelect.removeChild(pdfSelect.lastChild);
+        }
+
+        if (!category || !allHandouts[category]) {
+          pdfSelect.disabled = true;
+          pdfSelect.innerHTML =
+            '<option value="">First select a category...</option>';
+          return;
+        }
+
+        // Enable the handout dropdown
+        pdfSelect.disabled = false;
+        pdfSelect.innerHTML = '<option value="">Choose a handout...</option>';
+
+        // Sort handouts by title
+        const handouts = allHandouts[category].sort((a, b) =>
+          a.title.localeCompare(b.title)
+        );
+
+        // Add handouts to dropdown
+        for (const handout of handouts) {
+          const option = document.createElement("option");
+          option.value = JSON.stringify({
+            fileURL: handout.fileURL,
+            title: handout.title,
+            category: handout.category,
+          });
+          option.textContent = `${handout.title}${
+            handout.source ? ` (${handout.source})` : ""
+          }`;
+          pdfSelect.appendChild(option);
+        }
+      }
+
       // Load handouts when page loads
-      document.addEventListener("DOMContentLoaded", window.loadHandouts);
+      document.addEventListener("DOMContentLoaded", function () {
+        window.loadHandouts();
+
+        // Add event listener for category selection
+        document
+          .getElementById("categorySelect")
+          .addEventListener("change", function (e) {
+            loadHandoutsForCategory(e.target.value);
+          });
+      });
     </script>
   </head>
   <body class="bg-gray-100 min-h-screen flex items-center justify-center">
@@ -126,6 +160,22 @@
 
       <form id="smsForm" class="space-y-4">
         <div>
+          <label
+            for="categorySelect"
+            class="block text-sm font-medium text-gray-700"
+            >Select Category</label
+          >
+          <select
+            id="categorySelect"
+            name="categorySelect"
+            required
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          >
+            <option value="">Choose a category...</option>
+          </select>
+        </div>
+
+        <div>
           <label for="pdfSelect" class="block text-sm font-medium text-gray-700"
             >Select Handout</label
           >
@@ -133,9 +183,10 @@
             id="pdfSelect"
             name="pdfSelect"
             required
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            disabled
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100"
           >
-            <option value="">Choose a handout...</option>
+            <option value="">First select a category...</option>
           </select>
         </div>
 
