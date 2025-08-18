@@ -1,0 +1,25 @@
+<svg width="200" height="120" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#5A9FD4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4A90E2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Speech bubble -->
+  <path d="M20 10 L120 10 Q130 10 130 20 L130 40 Q130 50 120 50 L50 50 L35 65 L35 50 Q20 50 20 40 L20 20 Q20 10 30 10 Z" 
+        fill="url(#logoGradient)" 
+        stroke="none"/>
+  
+  <!-- Medical cross -->
+  <rect x="40" y="20" width="20" height="8" rx="1" fill="#000"/>
+  <rect x="46" y="14" width="8" height="20" rx="1" fill="#000"/>
+  
+  <!-- Text lines -->
+  <rect x="70" y="18" width="35" height="3" rx="1.5" fill="#000"/>
+  <rect x="70" y="26" width="35" height="3" rx="1.5" fill="#000"/>
+  <rect x="70" y="34" width="20" height="3" rx="1.5" fill="#000"/>
+  
+  <!-- CareText text -->
+  <text x="100" y="85" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#4A90E2" text-anchor="middle">CareText</text>
+</svg>
