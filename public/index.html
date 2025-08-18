@@ -58,12 +58,6 @@
         }
         try {
           console.log("Starting to load handouts...");
-          const categorySelect = document.getElementById("categorySelect");
-
-          // Clear existing options except the first one
-          while (categorySelect.children.length > 1) {
-            categorySelect.removeChild(categorySelect.lastChild);
-          }
 
           // Get handouts from Firestore
           const handoutsSnapshot = await getDocs(collection(db, "handouts"));
@@ -82,15 +76,21 @@
             });
           });
 
-          // Populate category dropdown
+          // Populate category buttons
+          const categoryButtons = document.getElementById("categoryButtons");
+          categoryButtons.innerHTML = ""; // Clear existing buttons
+
           for (const category of Object.keys(allHandouts).sort()) {
-            const option = document.createElement("option");
-            option.value = category;
-            option.textContent = category;
-            categorySelect.appendChild(option);
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className =
+              "px-3 py-2 text-sm bg-gray-100 hover:bg-blue-100 border border-gray-300 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500";
+            button.textContent = category;
+            button.onclick = () => selectCategory(category, button);
+            categoryButtons.appendChild(button);
           }
 
-          if (categorySelect.children.length <= 1) {
+          if (categoryButtons.children.length === 0) {
             showStatus("No categories found", "error");
           }
         } catch (error) {
@@ -140,16 +140,38 @@
         }
       }
 
+      // Function to select a category
+      let selectedCategoryButton = null;
+
+      function selectCategory(category, buttonElement) {
+        // Load handouts for this category
+        loadHandoutsForCategory(category);
+
+        // Hide category section and show handout section
+        document.getElementById("categorySection").style.display = "none";
+        document.getElementById("handoutSection").style.display = "block";
+
+        // Store selected category for back button
+        window.selectedCategory = category;
+      }
+
+      window.showCategorySection = function () {
+        document.getElementById("categorySection").style.display = "block";
+        document.getElementById("handoutSection").style.display = "none";
+
+        // Reset handout selection
+        const pdfSelect = document.getElementById("pdfSelect");
+        pdfSelect.innerHTML = '<option value="">Choose a handout...</option>';
+      };
+
       // Load handouts when page loads
       document.addEventListener("DOMContentLoaded", function () {
         window.loadHandouts();
 
-        // Add event listener for category selection
+        // Add back button event listener
         document
-          .getElementById("categorySelect")
-          .addEventListener("change", function (e) {
-            loadHandoutsForCategory(e.target.value);
-          });
+          .getElementById("backButton")
+          .addEventListener("click", showCategorySection);
       });
     </script>
   </head>
@@ -160,34 +182,37 @@
       </div>
 
       <form id="smsForm" class="space-y-4">
-        <div>
-          <label
-            for="categorySelect"
-            class="block text-sm font-medium text-gray-700"
+        <div id="categorySection">
+          <label class="block text-sm font-medium text-gray-700 mb-2"
             >Select Category</label
           >
-          <select
-            id="categorySelect"
-            name="categorySelect"
-            required
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          >
-            <option value="">Choose a category...</option>
-          </select>
+          <div id="categoryButtons" class="grid grid-cols-2 gap-2 mb-4">
+            <!-- Category buttons will be populated here -->
+          </div>
         </div>
 
-        <div>
-          <label for="pdfSelect" class="block text-sm font-medium text-gray-700"
-            >Select Handout</label
-          >
+        <div id="handoutSection" style="display: none">
+          <div class="flex items-center justify-between mb-2">
+            <label
+              for="pdfSelect"
+              class="block text-sm font-medium text-gray-700"
+              >Select Handout</label
+            >
+            <button
+              type="button"
+              id="backButton"
+              class="text-sm text-blue-600 hover:text-blue-800"
+            >
+              ← Back to Categories
+            </button>
+          </div>
           <select
             id="pdfSelect"
             name="pdfSelect"
             required
-            disabled
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100"
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
-            <option value="">First select a category...</option>
+            <option value="">Choose a handout...</option>
           </select>
         </div>
 
@@ -237,13 +262,17 @@
         const statusMessage = document.getElementById("statusMessage");
         statusDiv.classList.remove("hidden");
         statusMessage.textContent = message;
-        statusMessage.className = `text-sm ${
-          type === "error"
-            ? "text-red-500"
-            : type === "success"
-            ? "text-green-500"
-            : "text-blue-500"
-        }`;
+
+        if (type === "success") {
+          statusMessage.className =
+            "text-lg font-bold text-green-600 bg-green-100 px-4 py-3 rounded-lg border border-green-300";
+          statusDiv.className = "mt-4 text-center";
+        } else {
+          statusMessage.className = `text-sm ${
+            type === "error" ? "text-red-500" : "text-blue-500"
+          }`;
+          statusDiv.className = "mt-4 text-center";
+        }
       }
 
       document
@@ -286,8 +315,17 @@
             const data = await response.json();
 
             if (response.ok && data.success) {
-              showStatus("Handout link sent successfully!", "success");
+              showStatus("✅ Message Sent Successfully!", "success");
               document.getElementById("smsForm").reset();
+
+              // Wait 2 seconds before resetting to category selection
+              setTimeout(() => {
+                showCategorySection();
+                // Clear the status message after resetting
+                setTimeout(() => {
+                  document.getElementById("status").classList.add("hidden");
+                }, 500);
+              }, 2000);
             } else {
               throw new Error(data.error || "Failed to send message");
             }
